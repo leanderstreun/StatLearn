@@ -5,19 +5,63 @@ format: pdf
 editor: visual
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+Packages:
 
 ```{r}
-1 + 1
+#setwd("D:/1_Studium/U_KN/3_Semester/Statistical Learning/project/StatLearn")
+#install.packages('GGally')
+library(readr)
+library(GGally)
+library(ggplot2)
 ```
 
-You can add options to executable code like this
+1.   **Data Exploration**
+
+Load the breast cancer dataset:
+
+df \<- df\[, -ncol(df)\]
+
+```{r}
+df <- read_csv("BreastCancer.csv")
+```
+
+Check for missing values and handle them appropriately if necessary:
+
+```{r}
+df <- df[, -ncol(df)]
+```
+
+```{r}
+colnames(df)[colnames(df) == "concave points_mean"] <- "concave_points_mean"
+```
+
+Visualize the distribution of classes and features:
+
+```{r}
+#ggpairs(df[,3:12])
+```
+
+```{r}
+# Convert the class to a factor if it's not already
+df$diagnosis <- as.factor(df$diagnosis)
+
+# Get the column names for the features
+feature_names <- colnames(df[,3:12])
+
+# Loop over each feature name and create a histogram
+for (feature in feature_names) {
+  p <- ggplot(df, aes_string(x = feature, fill = 'diagnosis')) +
+    geom_histogram(position = "identity", alpha = 0.5, bins = 30) +
+    scale_fill_manual(values = c("blue", "orange")) +
+    labs(title = paste("Histogram of feature '", feature,"' for Benign and Malignant Tumors"),
+         x = feature,
+         y = "Frequency") +
+    theme_minimal()
+  
+  # Print the plot
+  print(p)
+}
+```
 
 ```{r}
 #| echo: false
