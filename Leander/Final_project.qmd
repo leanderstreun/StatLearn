@@ -11,10 +11,13 @@ Packages:
 #setwd("D:/1_Studium/U_KN/3_Semester/Statistical Learning/project/StatLearn/Leander")
 #install.packages('GGally')
 #install.packages('psych')
+#install.packages("gbm")
 library(readr)
 library(GGally)
 library(ggplot2)
 library(psych)
+library(gbm)
+library(caret)
 ```
 
 # 1. Data Exploration
@@ -148,5 +151,101 @@ pc_data_7 <- as.data.frame(pc_data[, 1:7])
 ```
 
 ```{r}
-df_pca <- cbind(df[,1:2], pc_data_7)
+df_pca <- cbind(df[,2], pc_data_7)
+```
+
+# 3. Model Selection and Model Evaluation:
+
+3.1) Choose two classification approach that we have covered in class:
+
+Models:\
+1) In **boosting**, we only use the original data, and do not draw any random samples. The trees are grown successively, using a “slow” learning approach: each new tree is fit to the signal that is left over from the earlier trees, and shrunken down before it is used.
+
+XGBoost and other gradient boosting methods use decision trees as their base learners. Decision trees split the data based on the value of a feature compared to a threshold
+
+2\) **Lasso** logistic regression
+
+3.2) Implement each algorithms and perform cross-validation on appropriate steps of your analysis:
+
+```{r}
+set.seed(3)
+train_size <- floor(0.8 * nrow(df_pca))
+train_indices <- sample(seq_len(nrow(df_pca)), size = train_size)
+```
+
+```{r}
+train_set <- df_pca[train_indices, ]
+test_set <- df_pca[-train_indices, ]
+```
+
+```{r}
+train_x <- train_set[, -1]
+train_y <- train_set$diagnosis
+```
+
+```{r}
+# Convert B to 0, M to 1
+train_set$diagnosis <- ifelse(train_set$diagnosis == "B", 0, 1)
+test_set$diagnosis <- ifelse(test_set$diagnosis == "B", 0, 1)
+```
+
+```{r}
+boosted_forests <- gbm(diagnosis ~ ., 
+                 data = train_set, 
+                 distribution = "bernoulli",
+                 verbose = TRUE
+                 #n.trees = 100, 
+                 #interaction.depth = 1,
+                 #shrinkage = 0.01
+                 )
+```
+
+```{r}
+summary(boosted_forests)
+```
+
+Cross validation
+
+```{r}
+cv.gbm_model <- gbm(diagnosis ~ ., 
+                 data = train_set, 
+                 distribution = "bernoulli",
+                 cv.folds = 5,
+                 train.fraction = 0.9,
+                 verbose = TRUE)
+
+
+best_trees <- gbm.perf(cv.gbm_model, method = "cv")
+
+#print the cross-validation results
+print(cv.gbm_model)
+```
+
+3.3) Evaluate the performance of each model on the testing set using appropriate evaluation metrics such as accuracy, precision, recall, F1-score, and ROC-AUC score:
+
+```{r}
+# prediction:
+predictions <- predict(cv.gbm_model, newdata = test_set, type = "response")
+```
+
+```{r}
+prediction_classes <- ifelse(predictions > 0.5, "1", "0")
+```
+
+```{r}
+performance <- confusionMatrix(as.factor(prediction_classes), as.factor(test_set$diagnosis))
+```
+
+```{r}
+performance$overall['Accuracy']
+performance$byClass['Sensitivity']
+performance$byClass['Specificity']
+performance$byClass['Precision']
+performance$byClass['F1']
+```
+
+# 4. Fine Tuning: 
+
+```{r}
+
 ```
