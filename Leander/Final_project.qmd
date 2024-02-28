@@ -1,0 +1,152 @@
+---
+title: "Project_StatLearn"
+author: "Leander_Streun"
+format: pdf
+editor: visual
+---
+
+Packages:
+
+```{r}
+#setwd("D:/1_Studium/U_KN/3_Semester/Statistical Learning/project/StatLearn/Leander")
+#install.packages('GGally')
+#install.packages('psych')
+library(readr)
+library(GGally)
+library(ggplot2)
+library(psych)
+```
+
+# 1. Data Exploration
+
+Load the breast cancer dataset:
+
+df \<- df\[, -ncol(df)\]
+
+```{r}
+df <- read_csv("BreastCancer.csv")
+```
+
+Check for missing values and handle them appropriately if necessary:
+
+```{r}
+df <- df[, -ncol(df)]
+```
+
+```{r}
+colnames(df)[colnames(df) == "concave points_mean"] <- "concave_points_mean"
+```
+
+Visualize the distribution of classes and features:
+
+```{r}
+#ggpairs(df[,3:12])
+```
+
+```{r}
+# Convert the class to a factor if it's not already
+df$diagnosis <- as.factor(df$diagnosis)
+
+# Get the column names for the features
+feature_names <- colnames(df[,3:12])
+
+# Loop over each feature name and create a histogram
+for (feature in feature_names) {
+  p <- ggplot(df, aes_string(x = feature, fill = 'diagnosis')) +
+    geom_histogram(position = "identity", alpha = 0.5, bins = 30) +
+    scale_fill_manual(values = c("blue", "orange")) +
+    labs(title = paste("Histogram of feature '", feature,"' for Benign and Malignant Tumors"),
+         x = feature,
+         y = "Frequency") +
+    theme_minimal()
+  
+  # Print the plot
+  print(p)
+}
+```
+
+Descriptive Statistics:
+
+```{r}
+descriptive_stats <- describe(df)
+
+# View the summary statistics
+print(descriptive_stats)
+```
+
+# 2. Data Preprocessing:
+
+Split the dataset into training and testing sets:
+
+```{r}
+set.seed(1)
+data_obs <- nrow(df)
+
+train_index <- sample(data_obs, size = trunc(0.80 * data_obs))
+train_data <- df[train_index, ]
+test_data <- df[-train_index, ]
+```
+
+Standardize or normalize the features if required:\
+\
+Models:\
+1) In **boosting**, we only use the original data, and do not draw any random samples. The trees are grown successively, using a “slow” learning approach: each new tree is fit to the signal that is left over from the earlier trees, and shrunken down before it is used.
+
+Normalization or standardization of features is a common preprocessing step for many machine learning algorithms, particularly those sensitive to the scale of data, such as SVMs or neural networks. However, for tree-based models, including Extreme Gradient Boosting (XGBoost), this step is not typically necessary.
+
+XGBoost and other gradient boosting methods use decision trees as their base learners. Decision trees split the data based on the value of a feature compared to a threshold; they do not require a concept of distance between points that would necessitate scaling. Thus, the performance of these models is generally invariant to the scale of the features.
+
+2\) **Lasso** logistic regression
+
+Normalization or standardization of features is a common preprocessing step for many machine learning algorithms, particularly those sensitive to the scale of data, such as SVMs or neural networks. However, for tree-based models, including Extreme Gradient Boosting (XGBoost), this step is not typically necessary.
+
+Lasso regression typically requires normalization (or standardization) of the input features. The reason for this is rooted in the nature of the Lasso penalty itself, which penalizes the absolute size of the coefficients. If the input features are on different scales, the Lasso penalty will affect them differently, potentially leading to biased or inconsistent selection of variables.
+
+Normalization (scaling all the features to have a mean of 0 and a standard deviation of 1) or standardization (scaling the features to range between a specific minimum and maximum value, often 0 and 1) ensures that each feature contributes equally to the penalty term, regardless of their original scale, units, or range. This uniform contribution is crucial for fair penalization and effective variable selection.
+
+Normalization is needed for PCA:
+
+```{r}
+df_features <- df[, -(1:2)]
+data_scaled <- scale(df_features)
+```
+
+Handle any categorical variables appropriately (if present):\
+
+no categorical variables.
+
+```{r}
+
+```
+
+Perform variable selection if required:
+
+```{r}
+pca_result <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+summary(pca_result)
+```
+
+```{r}
+loadings <- pca_result$rotation
+#print(loadings)
+```
+
+```{r}
+# For the first two components as an example
+df_loadings <- as.data.frame(loadings[, 1:2]) 
+df_loadings$variable <- rownames(df_loadings)
+ggplot(df_loadings, aes(x = PC1, y = PC2, label = variable)) +
+  geom_text() +
+  xlab("PC1 Loadings") +
+  ylab("PC2 Loadings") +
+  ggtitle("PCA Loadings for PC1 and PC2")
+```
+
+```{r}
+pc_data <- pca_result$x
+pc_data_7 <- as.data.frame(pc_data[, 1:7])
+```
+
+```{r}
+df_pca <- cbind(df[,1:2], pc_data_7)
+```
